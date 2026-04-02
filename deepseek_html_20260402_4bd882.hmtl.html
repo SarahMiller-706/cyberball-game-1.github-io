@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Cyberball 网络投球实验</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none; /* 避免拖动/选中文字干扰点击 */
+        }
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background: #eef2f7;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        /* 主容器 */
+        .experiment-container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+        /* 页面通用内边距 */
+        .page {
+            padding: 40px 30px 50px;
+            text-align: center;
+        }
+        /* 指导语文本区 */
+        .instruction-text {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #2c3e4f;
+            background: #f8fafc;
+            padding: 28px;
+            border-radius: 28px;
+            margin: 20px 0 30px;
+            text-align: left;
+            border: 1px solid #dce5ec;
+        }
+        .instruction-text p {
+            margin: 12px 0;
+        }
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        .btn {
+            background: #3b82f6;
+            border: none;
+            color: white;
+            font-size: 18px;
+            font-weight: 500;
+            padding: 12px 32px;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn-secondary {
+            background: #94a3b8;
+        }
+        .btn-secondary:hover {
+            background: #64748b;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        .btn:active {
+            transform: translateY(1px);
+        }
+        /* 游戏面板 */
+        .game-panel {
+            background: linear-gradient(145deg, #f9fafb 0%, #eef2f5 100%);
+            border-radius: 48px;
+            padding: 20px 15px 30px;
+            margin: 10px 0;
+        }
+        .players-area {
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 320px;
+            margin: 20px 0 20px;
+            flex-wrap: wrap;
+        }
+        .player-card {
+            flex: 1;
+            min-width: 150px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,240,0.6);
+            border-radius: 36px;
+            padding: 16px 8px;
+            margin: 8px;
+            backdrop-filter: blur(2px);
+            border: 2px solid transparent;
+        }
+        .player-card.active-thrower {
+            border: 3px solid #f97316;
+            background: #fff7ed;
+            box-shadow: 0 0 0 3px rgba(249,115,22,0.3);
+        }
+        .player-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            margin: 0 auto 12px;
+            background-size: cover;
+            background-position: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border: 3px solid white;
+        }
+        .player-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 10px 0 5px;
+            color: #1e293b;
+        }
+        .player-role {
+            font-size: 13px;
+            color: #475569;
+            background: #e2e8f0;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        .ball-indicator {
+            font-size: 32px;
+            margin-top: 8px;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));
+        }
+        .game-status {
+            background: #ffffffcc;
+            backdrop-filter: blur(8px);
+            border-radius: 60px;
+            padding: 12px 20px;
+            margin: 20px auto;
+            display: inline-block;
+            font-weight: bold;
+            color: #0f172a;
+        }
+        .round-counter {
+            font-size: 18px;
+            background: #1e293b;
+            color: white;
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 30px;
+            margin-bottom: 15px;
+        }
+        .finish-message {
+            text-align: center;
+            font-size: 24px;
+            color: #2c3e4f;
+            padding: 40px;
+        }
+        /* 结束页面 */
+        .end-page {
+            text-align: center;
+            padding: 50px 30px;
+        }
+        .end-text {
+            font-size: 22px;
+            margin: 30px 0;
+            background: #f1f5f9;
+            padding: 25px;
+            border-radius: 32px;
+        }
+        /* 响应式 */
+        @media (max-width: 700px) {
+            .players-area {
+                flex-direction: column;
+            }
+            .player-card {
+                width: 80%;
+                margin: 10px auto;
+            }
+            .btn {
+                padding: 10px 24px;
+                font-size: 16px;
+            }
+            .instruction-text {
+                font-size: 16px;
+                padding: 20px;
+            }
+        }
+        /* 隐藏类 */
+        .hidden {
+            display: none;
+        }
+        /* 等待下一球禁用点击 */
+        .waiting {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+<div class="experiment-container" id="appRoot">
+    <!-- 指导语页面 1/2 -->
+    <div id="pageInstruction1" class="page">
+        <h2 style="color:#1e3a8a;">📋 实验说明</h2>
+        <div class="instruction-text">
+            <p>在这一轮中，请你将右上角的玩家想象为你刚才确定的那位朋友。</p>
+            <p>在开始游戏前，请在脑中回想这位朋友的样子、以及你们最近一次互动的场景。</p>
+            <p>接下来，在整个游戏过程中，请始终把右上角玩家当作这位朋友，并根据你的真实感受完成游戏。</p>
+        </div>
+        <button class="btn" id="nextToStep2Btn">下一步</button>
+    </div>
+
+    <!-- 指导语页面 2/2（确认准备） -->
+    <div id="pageInstruction2" class="page hidden">
+        <div class="instruction-text" style="text-align:center;">
+            <p style="font-size:22px; font-weight:500;">✨ 请保持刚才想好的对象，游戏现在开始。</p>
+        </div>
+        <div class="button-group">
+            <button class="btn btn-secondary" id="backToStep1Btn">上一页</button>
+            <button class="btn" id="startGameBtn">正式开始</button>
+        </div>
+    </div>
+
+    <!-- 游戏主界面 -->
+    <div id="gamePage" class="hidden">
+        <div class="game-panel">
+            <div style="text-align:center;">
+                <span class="round-counter" id="throwCounter">传球次数: 0 / 30</span>
+            </div>
+            <div class="players-area" id="playersArea">
+                <!-- 动态生成玩家卡片 -->
+            </div>
+            <div style="text-align:center; margin-top: 10px;">
+                <div class="game-status" id="gameStatusMsg">
+                    🎯 游戏进行中 ...
+                </div>
+            </div>
+            <div style="font-size:14px; color:#4b5563; margin-top:20px; text-align:center;">
+                💡 提示：当球在你手上时，点击其他玩家头像即可传球
+            </div>
+        </div>
+    </div>
+
+    <!-- 实验结束页面 -->
+    <div id="endPage" class="hidden end-page">
+        <div class="end-text">
+            🎉 本轮游戏已完成<br>
+            请根据你在刚才传球游戏中的真实感受，回答以下问题
+        </div>
+        <button class="btn" id="backToQuestionnaireBtn">返回问卷</button>
+    </div>
+</div>
+
+<script>
+    // ======================= 基于用户JSON的配置 =======================
+    // 提取 JSON 中关键数据 (玩家名称、头像资源等)
+    const userJson = {
+        "player": {
+            "name": "Me",
+            "portraitBuff": "",
+            "tint": "#faf200"
+        },
+        "computerPlayers": [
+            {
+                "name": "User 1",
+                "portrait": "",
+                "tint": "#ffffff"
+            },
+            {
+                "name": "Friend",
+                "portrait": "",
+                "tint": "#ffffff"
+            }
+        ],
+        "defaultPortraits": [
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_FD4MuyE9xvXsw4N",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_9WAB10zvcNpYCay",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_9N8Q6TidKIbmmCG",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_50COcfLIQHBGGRo",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_cNkphviD8lW6Aui",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_eaO3Q2E2zIHGilU",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_cCulSSpb7ydhO8S",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_0Gtm9MRNwNePo90",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_eA0WUiP4s6xfelg",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_5mSCyUoqClgL5fo",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_elhZ8gV4ra10TIy",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_dcKcMkN46o0bxeC",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_7WhGUn4IfqKl7qm",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_0qayRbawfVh3SfA",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_b2FWU72a1pAPBfU",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_4TujTNJGvEa9jfM",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_80UFyMIwRPvlhbw",
+            "https://osunewarkcotc.pdx1.qualtrics.com/ControlPanel/Graphic.php?IM=IM_9yrharkWwnbCR7g"
+        ],
+        "throwCount": 30
+    };
+
+    // 定义玩家列表: 0: 自己(Me), 1: User1(左下/右下), 2: Friend(右上角/顶部)
+    // 布局视觉顺序：我们希望Friend在右上角，User1在右下角，Me在左下角，所以给每个卡片设定独立位置.
+    // 通过flex order 或 绝对位置？我们用flex wrap + 特定排列：用grid实现三个卡片：左下，右下，顶部中央。
+    // 为了确保右上角语义，我们通过CSS grid或flex自定义。使用grid布局。
+    // 动态创建玩家时，将三个卡片放入 grid 布局。
+    const players = [
+        { id: 0, name: userJson.player.name, role: "你 (自己)", avatarIdx: 0, isMe: true },
+        { id: 1, name: userJson.computerPlayers[0].name, role: "电脑玩家", avatarIdx: 1, isMe: false },
+        { id: 2, name: userJson.computerPlayers[1].name, role: "朋友 (右上角)", avatarIdx: 2, isMe: false }
+    ];
+    // 分配不同的头像 (从defaultPortraits取前三个不同图片)
+    const avatarUrls = [
+        userJson.defaultPortraits[0] || "https://via.placeholder.com/100?text=Me",
+        userJson.defaultPortraits[5] || "https://via.placeholder.com/100?text=User1",
+        userJson.defaultPortraits[10] || "https://via.placeholder.com/100?text=Friend"
+    ];
+
+    // 游戏全局变量
+    let currentThrower = 1;      // 初始持球者: 1号 User1 (让游戏自然开始)
+    let throwCount = 0;          // 已完成的传球次数 (总30次)
+    let totalThrows = userJson.throwCount;  // 30
+    let gameActive = false;      // 游戏是否运行中
+    let waitingForAI = false;     // 防止AI递归调用
+    let aiTimeout = null;         // AI延时句柄
+    let gameDataLog = [];         // 记录每一回合传球数据
+
+    // 包容/排斥阶段阈值 (前10次为包容，后20次为排斥)
+    const INCLUSION_ROUNDS = 10;   // 前10次包容阶段 (第1-10次传球)
+    
+    // 获取当前阶段 (基于已完成的传球次数 throwCount，注意throwCount是从0开始计次，下次传球是第 throwCount+1 次)
+    function getCurrentPhase() {
+        // 下一次传球次数 = throwCount + 1 (即将发生的传球)
+        let nextThrowNumber = throwCount + 1;
+        return nextThrowNumber <= INCLUSION_ROUNDS ? "inclusion" : "exclusion";
+    }
+    
+    // 电脑玩家选择目标 (根据阶段)
+    // currentHolder: 当前持球者id (必须是电脑玩家 1 或 2)
+    // 返回目标id (0: Me, 或者另一个电脑id)
+    function getComputerTarget(holderId) {
+        const phase = getCurrentPhase();
+        const otherComputerId = (holderId === 1) ? 2 : 1;
+        let targetId;
+        if (phase === "inclusion") {
+            // 包容阶段：电脑有较高概率传给玩家(Me) (约40%)，否则传给另一个电脑
+            const r = Math.random();
+            if (r < 0.4) {
+                targetId = 0;   // 传给Me
+            } else {
+                targetId = otherComputerId;
+            }
+        } else {
+            // 排斥阶段：电脑极少传给Me (约5%)，几乎都互传
+            const r = Math.random();
+            if (r < 0.05) {
+                targetId = 0;
+            } else {
+                targetId = otherComputerId;
+            }
+        }
+        return targetId;
+    }
+    
+    // 执行一次传球 (from -> to)
+    function performThrow(fromId, toId) {
+        if (!gameActive) return false;
+        if (throwCount >= totalThrows) {
+            endGame();
+            return false;
+        }
+        
+        // 记录本次传球数据
+        const phase = getCurrentPhase();
+        const throwRecord = {
+            throwNumber: throwCount + 1,
+            from: players[fromId].name,
+            to: players[toId].name,
+            phase: phase,
+            timestamp: Date.now()
+        };
+        gameDataLog.push(throwRecord);
+        
+        // 更新持球者
+        currentThrower = toId;
+        throwCount++;
+        
+        // 更新UI
+        updateUI();
+        
+        // 判断游戏是否结束
+        if (throwCount >= totalThrows) {
+            endGame();
+            return true;
+        }
+        
+        // 若球传给了电脑，由电脑自动继续传球（延时）
+        if (toId !== 0 && gameActive) {
+            scheduleAITurn(toId);
+        } else if (toId === 0 && gameActive) {
+            // 球在玩家手中，等待玩家点击传球，无需额外动作，只需要高亮并等待
+            waitingForAI = false;
+            // 移除等待遮罩
+            document.getElementById('playersArea')?.classList.remove('waiting');
+            setGameMessage("🏀 轮到你了！点击其他玩家头像传球");
+        }
+        return true;
+    }
+    
+    // 电脑玩家延时后自动传球
+    function scheduleAITurn(computerId) {
+        if (!gameActive) return;
+        if (aiTimeout) clearTimeout(aiTimeout);
+        waitingForAI = true;
+        // 增加视觉等待提示
+        setGameMessage(`💭 ${players[computerId].name} 正在思考传球...`);
+        aiTimeout = setTimeout(() => {
+            if (!gameActive) return;
+            if (currentThrower === computerId && gameActive && throwCount < totalThrows) {
+                const targetId = getComputerTarget(computerId);
+                performThrow(computerId, targetId);
+            }
+            waitingForAI = false;
+            aiTimeout = null;
+        }, 600 + Math.random() * 500);  // 0.6~1.1秒反应，更真实
+    }
+    
+    // 玩家主动传球 (点击其他玩家头像)
+    function playerThrow(targetId) {
+        if (!gameActive) return false;
+        if (waitingForAI) return false;   // 正在AI回合，不可打断
+        if (currentThrower !== 0) {
+            setGameMessage("❌ 现在球不在你手上，请等待传球");
+            return false;
+        }
+        if (targetId === 0) {
+            setGameMessage("⚠️ 不能把球传给自己！请选择其他玩家");
+            return false;
+        }
+        if (throwCount >= totalThrows) return false;
+        // 执行玩家传球
+        performThrow(0, targetId);
+        return true;
+    }
+    
+    // 结束游戏，显示结束页面并存储数据
+    function endGame() {
+        if (!gameActive) return;
+        gameActive = false;
+        if (aiTimeout) clearTimeout(aiTimeout);
+        waitingForAI = false;
+        
+        // 将游戏数据存入 localStorage，方便后续导出（脑岛可读取）
+        try {
+            const exportData = {
+                experiment: "cyberball",
+                totalThrows: totalThrows,
+                throws: gameDataLog,
+                finishTime: new Date().toISOString(),
+                config: {
+                    inclusionRounds: INCLUSION_ROUNDS,
+                    totalThrows: totalThrows
+                }
+            };
+            localStorage.setItem("cyberball_game_data", JSON.stringify(exportData));
+            console.log("游戏数据已保存:", exportData);
+        } catch(e) { console.warn(e); }
+        
+        // 切换到结束页面
+        document.getElementById('gamePage')?.classList.add('hidden');
+        document.getElementById('endPage')?.classList.remove('hidden');
+    }
+    
+    // UI更新：高亮持球者，更新传球计数，显示当前阶段
+    function updateUI() {
+        // 更新计数器
+        const counterSpan = document.getElementById('throwCounter');
+        if (counterSpan) counterSpan.innerText = `传球次数: ${throwCount} / ${totalThrows}`;
+        
+        // 更新每个玩家卡片样式
+        for (let i = 0; i < players.length; i++) {
+            const card = document.getElementById(`playerCard_${i}`);
+            if (card) {
+                if (currentThrower === i) {
+                    card.classList.add('active-thrower');
+                    // 在球权图标上显示 🏀
+                    const ballSpan = card.querySelector('.ball-indicator');
+                    if (ballSpan) ballSpan.innerHTML = '🏀';
+                } else {
+                    card.classList.remove('active-thrower');
+                    const ballSpan = card.querySelector('.ball-indicator');
+                    if (ballSpan) ballSpan.innerHTML = '';
+                }
+            }
+        }
+        
+        // 显示当前阶段提示
+        const phase = getCurrentPhase();
+        const phaseText = phase === "inclusion" ? "🤝 包容阶段 (大家都会传球给你)" : "⚠️ 排斥阶段 (你很难接到球)";
+        const statusDiv = document.getElementById('gameStatusMsg');
+        if (statusDiv) {
+            if (currentThrower === 0 && gameActive && throwCount < totalThrows) {
+                statusDiv.innerHTML = `🎯 ${phaseText} &nbsp;| 🔥 轮到你传球！点击其他玩家`;
+            } else {
+                statusDiv.innerHTML = `🎯 ${phaseText}`;
+            }
+        }
+    }
+    
+    function setGameMessage(msg) {
+        const statusDiv = document.getElementById('gameStatusMsg');
+        if (statusDiv && gameActive) statusDiv.innerHTML = `💬 ${msg}`;
+    }
+    
+    // 构建游戏界面（三个玩家卡片，特殊布局让Friend在右上角）
+    function buildGameUI() {
+        const container = document.getElementById('playersArea');
+        if (!container) return;
+        container.innerHTML = '';
+        // 使用grid实现独特排列：左下(自己)，右下(用户1)，顶部中央(Friend)
+        container.style.display = 'grid';
+        container.style.gridTemplateAreas = `
+            ". top ."
+            "left . right"
+        `;
+        container.style.gridTemplateColumns = '1fr 1fr 1fr';
+        container.style.gridTemplateRows = 'auto auto';
+        container.style.gap = '16px';
+        container.style.alignItems = 'center';
+        container.style.justifyItems = 'center';
+        
+        // 创建三个卡片并分配区域
+        // 玩家0 Me -> left; 玩家1 User1 -> right; 玩家2 Friend -> top
+        const positions = [
+            { id: 0, area: "left", label: "你 (自己)" },
+            { id: 1, area: "right", label: "电脑玩家" },
+            { id: 2, area: "top", label: "朋友 (右上角)" }
+        ];
+        
+        positions.forEach(pos => {
+            const p = players[pos.id];
+            const card = document.createElement('div');
+            card.className = 'player-card';
+            if (pos.id === 2) {
+                card.style.gridArea = pos.area;
+                card.style.margin = '0 auto';
+            } else {
+                card.style.gridArea = pos.area;
+            }
+            card.id = `playerCard_${p.id}`;
+            // 头像
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'player-avatar';
+            avatarDiv.style.backgroundImage = `url(${avatarUrls[pos.id] || 'https://via.placeholder.com/100?text=Avatar'})`;
+            avatarDiv.style.backgroundSize = 'cover';
+            // 名字
+            const nameSpan = document.createElement('div');
+            nameSpan.className = 'player-name';
+            nameSpan.innerText = p.name;
+            // 角色
+            const roleSpan = document.createElement('div');
+            roleSpan.className = 'player-role';
+            roleSpan.innerText = pos.label;
+            // 球权指示器
+            const ballSpan = document.createElement('div');
+            ballSpan.className = 'ball-indicator';
+            
+            card.appendChild(avatarDiv);
+            card.appendChild(nameSpan);
+            card.appendChild(roleSpan);
+            card.appendChild(ballSpan);
+            
+            // 点击事件：只有非自己持球时且游戏活跃且是自己回合才可传球（玩家只能在自己持球时传给他人）
+            card.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!gameActive) return;
+                if (waitingForAI) {
+                    setGameMessage("请稍等，电脑传球中...");
+                    return;
+                }
+                if (currentThrower === 0 && p.id !== 0) {
+                    // 玩家传球给目标
+                    playerThrow(p.id);
+                } else if (currentThrower !== 0) {
+                    setGameMessage("球不在你手上，等待电脑传球~");
+                } else if (p.id === 0) {
+                    setGameMessage("不能传球给自己，请点击其他玩家");
+                }
+            });
+            container.appendChild(card);
+        });
+        
+        // 额外添加一个友善提示：强调右上角是朋友
+        const friendHint = document.createElement('div');
+        friendHint.style.gridColumn = '1 / -1';
+        friendHint.style.fontSize = '14px';
+        friendHint.style.color = '#c2410c';
+        friendHint.style.marginTop = '10px';
+        friendHint.style.backgroundColor = '#fff7ed';
+        friendHint.style.padding = '8px';
+        friendHint.style.borderRadius = '40px';
+        friendHint.innerHTML = '⭐ 右上角玩家就是你的朋友，请保持想象 ⭐';
+        container.appendChild(friendHint);
+    }
+    
+    // 开始游戏 (重置所有状态)
+    function startGame() {
+        // 重置变量
+        throwCount = 0;
+        currentThrower = 1;   // 让User1先持球，游戏自然开始
+        gameActive = true;
+        waitingForAI = false;
+        if (aiTimeout) clearTimeout(aiTimeout);
+        gameDataLog = [];
+        
+        // 重建UI确保显示干净
+        buildGameUI();
+        updateUI();
+        
+        // 显示游戏页面
+        document.getElementById('pageInstruction1')?.classList.add('hidden');
+        document.getElementById('pageInstruction2')?.classList.add('hidden');
+        document.getElementById('gamePage')?.classList.remove('hidden');
+        document.getElementById('endPage')?.classList.add('hidden');
+        
+        // 如果初始持球者是电脑 (1号)，启动AI回合；否则等待玩家
+        if (currentThrower !== 0 && gameActive) {
+            scheduleAITurn(currentThrower);
+        } else if (currentThrower === 0 && gameActive) {
+            setGameMessage("🏀 游戏开始！球在你手上，请选择传球对象");
+            document.getElementById('playersArea')?.classList.remove('waiting');
+        } else {
+            // 兜底
+            setGameMessage("游戏开始");
+        }
+    }
+    
+    // 返回问卷（跳转或关闭窗口，根据实际环境可以修改链接）
+    function backToQuestionnaire() {
+        // 默认行为: 显示一个提示，并提供关闭窗口/返回上一页的选项
+        // 若在脑岛平台，可以调用脑岛提供的跳转函数。这里提供通用方案
+        if (window.opener || window.parent !== window) {
+            // 可能是iframe嵌入，尝试通知父页面
+            window.parent.postMessage({ type: "cyberball_complete", data: localStorage.getItem("cyberball_game_data") }, "*");
+            alert("实验已完成，请返回问卷页面继续填写。");
+        } else {
+            alert("实验数据已保存，请返回问卷页面。");
+        }
+        // 提供一个手动返回的备选：让页面显示一个链接
+        const confirmReturn = confirm("实验已完成，是否关闭/返回上一页？");
+        if (confirmReturn) {
+            window.history.back();
+        }
+    }
+    
+    // 页面切换事件绑定
+    function bindNavigation() {
+        const nextBtn = document.getElementById('nextToStep2Btn');
+        const backBtn = document.getElementById('backToStep1Btn');
+        const startBtn = document.getElementById('startGameBtn');
+        const returnBtn = document.getElementById('backToQuestionnaireBtn');
+        
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                document.getElementById('pageInstruction1')?.classList.add('hidden');
+                document.getElementById('pageInstruction2')?.classList.remove('hidden');
+            });
+        }
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                document.getElementById('pageInstruction2')?.classList.add('hidden');
+                document.getElementById('pageInstruction1')?.classList.remove('hidden');
+            });
+        }
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                startGame();
+            });
+        }
+        if (returnBtn) {
+            returnBtn.addEventListener('click', backToQuestionnaire);
+        }
+    }
+    
+    // 预构建游戏卡片样式占位
+    function init() {
+        bindNavigation();
+        // 预构建一个基础游戏面板结构但不显示
+        buildGameUI();
+        // 确保开始前游戏页面无数据残留
+        document.getElementById('gamePage')?.classList.add('hidden');
+        document.getElementById('endPage')?.classList.add('hidden');
+        document.getElementById('pageInstruction1')?.classList.remove('hidden');
+        document.getElementById('pageInstruction2')?.classList.add('hidden');
+    }
+    
+    init();
+</script>
+</body>
+</html>
